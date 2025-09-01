@@ -16,7 +16,7 @@ warnings.filterwarnings('ignore')
 
 # Configure page
 st.set_page_config(
-    page_title="TARS POLARIS V2 - ESG Future Predictor",
+    page_title="POLARIS - Predictive Operational Labor Analytics & Risk Intelligence System",
     page_icon="🌍",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -514,7 +514,7 @@ def main():
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.caption("🤖 TARS POLARIS V2 | Bank of England Research")
+        st.caption("🤖 POLARIS | Bank of England Research")
     with col2:
         st.caption(f"📅 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     with col3:
