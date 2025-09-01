@@ -211,33 +211,6 @@ class FuturePredictor:
         df['Sector'] = sector
         
         return df
-    
-    def generate_confidence_bands(self, trajectories):
-        """Generate confidence bands for trajectories"""
-        bands = {}
-        for col in trajectories.columns:
-            if col not in ['Year', 'Sector']:
-                values = trajectories[col].values
-                std = np.std(values) * 0.2  # Simplified confidence calculation
-                bands[f'{col}_lower'] = values - 1.96 * std
-                bands[f'{col}_upper'] = values + 1.96 * std
-        
-        return pd.DataFrame(bands, index=trajectories.index)
-    
-    def calculate_scenario_impact(self, baseline, scenario):
-        """Calculate the impact of scenario vs baseline"""
-        impacts = {}
-        
-        for col in baseline.columns:
-            if col not in ['Year', 'Sector']:
-                baseline_val = baseline[col].mean()
-                scenario_val = scenario[col].mean()
-                if baseline_val != 0:
-                    impacts[col] = ((scenario_val - baseline_val) / baseline_val) * 100
-                else:
-                    impacts[col] = 0
-                    
-        return impacts
 
 def create_historical_plot(historical_dict, metric, title):
     """Create historical data plot with Paris Agreement marker"""
@@ -325,28 +298,6 @@ def create_trajectory_plot(trajectories_dict, metric, title):
     
     return fig
 
-def create_impact_heatmap(impacts_df):
-    """Create a heatmap showing scenario impacts"""
-    fig = go.Figure(data=go.Heatmap(
-        z=impacts_df.values,
-        x=impacts_df.columns,
-        y=impacts_df.index,
-        colorscale='RdBu_r',
-        zmid=0,
-        text=impacts_df.values.round(1),
-        texttemplate='%{text}%',
-        textfont={"size": 12},
-        colorbar=dict(title="Impact (%)")
-    ))
-    
-    fig.update_layout(
-        title="Scenario Impact Analysis (% Change from Baseline)",
-        template="plotly_white",
-        height=300
-    )
-    
-    return fig
-
 def main():
     # Header
     st.markdown('<h1 class="main-header">🌍 TARS POLARIS V2 - ESG Future Prediction System</h1>', 
@@ -402,10 +353,8 @@ def main():
         trajectories_dict = {sector: predictor.predict_future_trajectory(sector, scenario_params)}
         historical_dict = predictor.get_historical_data(sector)
     
-    # Add Historical Analysis Tab at the beginning
-    # Main dashboard layout with Historical as first tab
-    tab0, tab1, tab2, tab3, tab4 = st.tabs(["📜 Historical Trends (2015-2025)", "📈 Future Trajectories", 
-                                            "🎯 Scenario Impact", "⚠️ Risk Analysis", "📊 Comparative Analysis"])
+    # Main dashboard layout with 3 tabs only
+    tab0, tab1, tab2 = st.tabs(["📜 Historical Trends (2015-2025)", "📈 Future Trajectories", "📊 Comparative Analysis"])
     
     with tab0:
         st.header("Historical ESG Performance (2015-2025)")
@@ -503,112 +452,6 @@ def main():
             st.plotly_chart(fig4, use_container_width=True)
     
     with tab2:
-        st.header("Scenario Impact Analysis")
-        
-        # Calculate baseline (no intervention)
-        baseline_params = {'policy_intensity': 100, 'carbon_tax': False, 
-                          'green_tech': False, 'disclosure_mandate': False}
-        
-        if sector == "Both":
-            impact_data = []
-            for s in ["Financial", "Non-Financial"]:
-                baseline = predictor.predict_future_trajectory(s, baseline_params)
-                scenario = trajectories_dict[s]
-                impacts = predictor.calculate_scenario_impact(baseline, scenario)
-                impact_data.append(impacts)
-            
-            impacts_df = pd.DataFrame(impact_data, 
-                                     index=["Financial", "Non-Financial"])
-        else:
-            baseline = predictor.predict_future_trajectory(sector, baseline_params)
-            scenario = trajectories_dict[sector]
-            impacts = predictor.calculate_scenario_impact(baseline, scenario)
-            impacts_df = pd.DataFrame([impacts], index=[sector])
-        
-        # Display impact heatmap
-        fig_heatmap = create_impact_heatmap(impacts_df)
-        st.plotly_chart(fig_heatmap, use_container_width=True)
-        
-        # Key insights
-        st.subheader("🔍 Key Insights")
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            avg_esg_impact = impacts_df['ESG Score'].mean() if 'ESG Score' in impacts_df.columns else 0
-            st.metric("ESG Score Impact", f"{avg_esg_impact:.1f}%",
-                     delta="Positive" if avg_esg_impact > 0 else "Negative")
-            
-        with col2:
-            avg_emissions_impact = impacts_df['Emissions'].mean() if 'Emissions' in impacts_df.columns else 0
-            st.metric("Emissions Impact", f"{avg_emissions_impact:.1f}%",
-                     delta="Reduction" if avg_emissions_impact < 0 else "Increase")
-            
-        with col3:
-            avg_transparency = impacts_df['Opacity Index'].mean() if 'Opacity Index' in impacts_df.columns else 0
-            st.metric("Transparency Impact", f"{avg_transparency:.1f}%",
-                     delta="Improved" if avg_transparency < 0 else "Worsened")
-    
-    with tab3:
-        st.header("Risk Analysis & Critical Thresholds")
-        
-        # Risk matrix
-        col1, col2 = st.columns([2, 1])
-        
-        with col1:
-            st.subheader("🎯 Risk Matrix")
-            
-            # Create risk scores based on trajectories
-            risk_data = []
-            for sector_name, df in trajectories_dict.items():
-                risk_score = {
-                    'Sector': sector_name,
-                    'ESG Risk': 'Low' if df['ESG Score'].iloc[-1] > 70 else 'Medium' if df['ESG Score'].iloc[-1] > 50 else 'High',
-                    'Emissions Risk': 'Low' if df['Emissions'].iloc[-1] < 50 else 'Medium' if df['Emissions'].iloc[-1] < 100 else 'High',
-                    'Transparency Risk': 'Low' if df['Opacity Index'].iloc[-1] < 0.3 else 'Medium' if df['Opacity Index'].iloc[-1] < 0.5 else 'High',
-                    'Greenwashing Risk': 'Low' if df['Greenwashing Score'].iloc[-1] < 0.3 else 'Medium' if df['Greenwashing Score'].iloc[-1] < 0.5 else 'High'
-                }
-                risk_data.append(risk_score)
-            
-            risk_df = pd.DataFrame(risk_data)
-            
-            # Display as colored table
-            def color_risk(val):
-                if val == 'High':
-                    return 'background-color: #e74c3c; color: white'
-                elif val == 'Medium':
-                    return 'background-color: #f39c12; color: white'
-                elif val == 'Low':
-                    return 'background-color: #27ae60; color: white'
-                return ''
-            
-            styled_df = risk_df.style.applymap(color_risk, 
-                                              subset=['ESG Risk', 'Emissions Risk', 
-                                                     'Transparency Risk', 'Greenwashing Risk'])
-            st.dataframe(styled_df, use_container_width=True)
-        
-        with col2:
-            st.subheader("⚠️ Critical Alerts")
-            
-            # Check for critical conditions
-            alerts = []
-            for sector_name, df in trajectories_dict.items():
-                if df['ESG Score'].iloc[-1] < 40:
-                    alerts.append(f"🔴 {sector_name}: Critical ESG Score")
-                if df['Emissions'].iloc[-1] > 150:
-                    alerts.append(f"🔴 {sector_name}: High Emissions")
-                if df['Opacity Index'].iloc[-1] > 0.6:
-                    alerts.append(f"🟡 {sector_name}: Low Transparency")
-                if df['Greenwashing Score'].iloc[-1] > 0.6:
-                    alerts.append(f"🟡 {sector_name}: Greenwashing Risk")
-            
-            if alerts:
-                for alert in alerts:
-                    st.warning(alert)
-            else:
-                st.success("✅ No critical alerts")
-    
-    with tab4:
         st.header("Comparative Sector Analysis")
         
         if len(trajectories_dict) > 1:
