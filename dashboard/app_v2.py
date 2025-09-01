@@ -148,14 +148,17 @@ class FuturePredictor:
             return {sector: self.historical_data[sector]}
                 
     def _create_dummy_model(self):
-        """Create a dummy model for demonstration"""
-        from sklearn.ensemble import RandomForestRegressor
-        model = RandomForestRegressor(n_estimators=100, random_state=42)
-        # Fit with dummy data
-        X = np.random.randn(100, 10)
-        y = np.random.randn(100)
-        model.fit(X, y)
-        return model
+        """Create a dummy model for fallback"""
+        try:
+            from sklearn.ensemble import RandomForestRegressor
+            return RandomForestRegressor(n_estimators=10, random_state=42)
+        except ImportError:
+            # Return a simple predictor that returns average values
+            class DummyModel:
+                def predict(self, X):
+                    import numpy as np
+                    return np.full(len(X), 50.0)  # Return average ESG score
+            return DummyModel()
         
     def predict_future_trajectory(self, sector, scenario_params):
         """Generate future ESG trajectories based on scenario parameters"""
