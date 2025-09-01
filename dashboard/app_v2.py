@@ -300,7 +300,7 @@ def create_trajectory_plot(trajectories_dict, metric, title):
 
 def main():
     # Header
-    st.markdown('<h1 class="main-header">🌍 TARS POLARIS V2 - ESG Future Prediction System</h1>', 
+    st.markdown('<h1 class="main-header">🌍 POLARIS - Predictive Operational Labor Analytics & Risk Intelligence System</h1>', 
                 unsafe_allow_html=True)
     
     # Initialize predictor
